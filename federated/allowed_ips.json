@@ -1,0 +1,7 @@
+{
+  "allowed_ips": [
+    "192.168.0.17"
+  ],
+  "note": "These IPs are temporarily allowed for current session only.",
+  "timestamp": "2026-01-20T16:02:32.751707"
+}

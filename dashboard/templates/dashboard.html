@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Federated NIDS - Real-time Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        .container { max-width: 1600px; margin: 0 auto; padding: 20px; }
+
+        header {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header-subtitle { color: #94a3b8; font-size: 1.1em; margin-top: 10px; }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+            animation: pulse 2s infinite;
+        }
+
+        .status-online {
+            background: rgba(34,197,94,0.2);
+            color: #22c55e;
+            border: 2px solid #22c55e;
+        }
+
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(102,126,234,0.4);
+        }
+
+        .card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+        .card-icon { font-size: 2em; }
+        .card-title { font-size: 0.9em; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
+
+        .card-value {
+            font-size: 2.5em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .card-subtext { font-size: 0.85em; color: #94a3b8; margin-top: 8px; }
+
+        .chart-container {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .chart-title { font-size: 1.3em; margin-bottom: 20px; color: #e2e8f0; }
+
+        canvas { max-height: 350px; }
+
+        /* Waiting overlay shown when no real data */
+        .chart-overlay {
+            display: none;
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(100, 116, 234, 0.15);
+            border: 1px solid rgba(102,126,234,0.4);
+            border-radius: 8px;
+            padding: 6px 18px;
+            font-size: 0.82em;
+            color: #94a3b8;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        .chart-overlay.visible { display: block; }
+
+        .clients-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .client-card {
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .client-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .client-name { font-weight: 600; font-size: 1.1em; }
+
+        .client-status {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: #22c55e; box-shadow: 0 0 10px #22c55e;
+        }
+
+        .client-status.warning { background: #f59e0b; box-shadow: 0 0 10px #f59e0b; }
+        .client-stats { font-size: 0.85em; color: #94a3b8; }
+        .client-stats div { display: flex; justify-content: space-between; margin-bottom: 8px; }
+
+        .attacks-feed {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .attack-item {
+            background: rgba(239,68,68,0.1);
+            border-left: 4px solid #ef4444;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            animation: slideIn 0.5s;
+        }
+
+        @keyframes slideIn { from{transform:translateX(-20px);opacity:0} to{transform:translateX(0);opacity:1} }
+
+        .attack-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .attack-type { font-weight: 600; color: #ef4444; }
+        .attack-time { font-size: 0.85em; color: #94a3b8; }
+        .attack-details { font-size: 0.9em; color: #cbd5e1; }
+
+        .blocked-ips {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .ip-item {
+            background: rgba(239,68,68,0.15);
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .ip-address { font-family: 'Courier New', monospace; font-weight: 600; color: #fca5a5; }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 1024px) { .two-column { grid-template-columns: 1fr; } }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: rgba(102,126,234,0.5); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(102,126,234,0.7); }
+
+        .federated-info {
+            background: rgba(102,126,234,0.1);
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .federated-round { font-size: 1.2em; font-weight: 600; color: #667eea; }
+        .section-title { font-size: 1.5em; margin-bottom: 20px; color: #e2e8f0; display: flex; align-items: center; gap: 10px; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- Header -->
+    <header>
+        <h1>🛡️ Federated NIDS <span class="status-badge status-online">ONLINE</span></h1>
+        <div class="header-subtitle">Real-time Network Intrusion Detection System with Federated Learning</div>
+        <div class="federated-info">
+            <div class="federated-round">Federated Round: <span id="fedRound">0</span></div>
+            <div style="color:#94a3b8;margin-top:5px;">Global Model Accuracy: <span id="globalAccuracy">99.67%</span></div>
+        </div>
+    </header>
+
+    <!-- Key Metrics -->
+    <div class="grid">
+        <div class="card">
+            <div class="card-header"><div class="card-icon">👥</div><div class="card-title">Connected Clients</div></div>
+            <div class="card-value" id="clientsCount">0</div>
+            <div class="card-subtext">Active federated nodes</div>
+        </div>
+        <div class="card">
+            <div class="card-header"><div class="card-icon">🚨</div><div class="card-title">Total Attacks</div></div>
+            <div class="card-value" id="attacksCount">0</div>
+            <div class="card-subtext">Detected across network</div>
+        </div>
+        <div class="card">
+            <div class="card-header"><div class="card-icon">🚫</div><div class="card-title">Blocked IPs</div></div>
+            <div class="card-value" id="blockedCount">0</div>
+            <div class="card-subtext">Globally synchronized</div>
+        </div>
+        <div class="card">
+            <div class="card-header"><div class="card-icon">📦</div><div class="card-title">Packets Processed</div></div>
+            <div class="card-value" id="packetsCount">0</div>
+            <div class="card-subtext">Total network traffic</div>
+        </div>
+    </div>
+
+    <!-- Attack Types Doughnut -->
+    <div class="chart-container">
+        <h2 class="chart-title">📊 Attack Types Distribution</h2>
+        <canvas id="attackTypesChart"></canvas>
+        <div class="chart-overlay visible" id="donutOverlay">⏳ Waiting for attack data from client…</div>
+    </div>
+
+    <!-- Attack Timeline -->
+    <div class="chart-container">
+        <h2 class="chart-title">📈 Attack Timeline (Real-time)</h2>
+        <canvas id="attackTimelineChart"></canvas>
+        <div class="chart-overlay visible" id="timelineOverlay">⏳ No attacks recorded yet — timeline will populate live</div>
+    </div>
+
+    <!-- Two Column -->
+    <div class="two-column">
+        <div>
+            <h2 class="section-title">🔴 Live Attack Feed</h2>
+            <div class="attacks-feed" id="attacksFeed">
+                <div style="text-align:center;color:#94a3b8;padding:40px;">Waiting for attack detection...</div>
+            </div>
+        </div>
+        <div>
+            <h2 class="section-title">🚫 Blocked IPs</h2>
+            <div class="blocked-ips" id="blockedIps">
+                <div style="text-align:center;color:#94a3b8;padding:40px;">No IPs blocked yet</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connected Clients -->
+    <h2 class="section-title">🖥️ Connected Federated Clients</h2>
+    <div class="chart-container">
+        <div class="clients-grid" id="clientsGrid">
+            <div style="text-align:center;color:#94a3b8;padding:40px;grid-column:1/-1;">No clients connected</div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const socket = io();
+    let attackTypesChart, attackTimelineChart;
+    let attacksData = [];
+
+    // ── PLACEHOLDER data so charts are visible before real data arrives ──
+    const PLACEHOLDER_TYPES  = [1, 1, 1];   // equal slices, visually balanced
+    const PLACEHOLDER_LABELS = ['00:00'];
+    const PLACEHOLDER_COUNTS = [0];
+
+    document.addEventListener('DOMContentLoaded', function () {
+        initializeCharts();
+        fetchInitialData();
+        setupSocketListeners();
+        setInterval(fetchStats,      5000);
+        setInterval(fetchClients,    5000);
+        setInterval(fetchBlockedIPs, 10000);
+    });
+
+    function initializeCharts() {
+        // ── Doughnut ──
+        const ctx1 = document.getElementById('attackTypesChart').getContext('2d');
+        attackTypesChart = new Chart(ctx1, {
+            type: 'doughnut',
+            data: {
+                labels: ['BruteForce', 'DoS/DDoS', 'PortScan'],
+                datasets: [{
+                    data: PLACEHOLDER_TYPES.slice(),
+                    backgroundColor: [
+                        'rgba(239,68,68,0.8)',
+                        'rgba(251,146,60,0.8)',
+                        'rgba(245,158,11,0.8)'
+                    ],
+                    borderColor: [
+                        'rgba(239,68,68,1)',
+                        'rgba(251,146,60,1)',
+                        'rgba(245,158,11,1)'
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: '#e2e8f0', font: { size: 14 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                // Hide tooltip values when still on placeholder
+                                const raw = ctx.dataset.data;
+                                const isPlaceholder = raw.every(v => v === 1);
+                                if (isPlaceholder) return ' No data yet';
+                                return ` ${ctx.label}: ${ctx.parsed}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // ── Line timeline ──
+        const ctx2 = document.getElementById('attackTimelineChart').getContext('2d');
+        attackTimelineChart = new Chart(ctx2, {
+            type: 'line',
+            data: {
+                labels: PLACEHOLDER_LABELS.slice(),
+                datasets: [{
+                    label: 'Attacks Detected',
+                    data: PLACEHOLDER_COUNTS.slice(),
+                    borderColor: 'rgba(239,68,68,1)',
+                    backgroundColor: 'rgba(239,68,68,0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: '#e2e8f0', stepSize: 1 },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                    },
+                    x: {
+                        ticks: { color: '#e2e8f0' },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                    }
+                },
+                plugins: {
+                    legend: { labels: { color: '#e2e8f0' } }
+                }
+            }
+        });
+    }
+
+    // ── Update doughnut; fall back to placeholder if all zero ──
+    function updateDonut(bruteForce, dos, portScan) {
+        const total = bruteForce + dos + portScan;
+        const overlay = document.getElementById('donutOverlay');
+
+        if (total === 0) {
+            // Keep equal placeholder slices so chart renders
+            attackTypesChart.data.datasets[0].data = PLACEHOLDER_TYPES.slice();
+            overlay.classList.add('visible');
+        } else {
+            attackTypesChart.data.datasets[0].data = [bruteForce, dos, portScan];
+            overlay.classList.remove('visible');
+        }
+        attackTypesChart.update();
+    }
+
+    // ── Update timeline; show placeholder point if empty ──
+    function updateTimelineChart() {
+        const grouped = {};
+        attacksData.forEach(attack => {
+            const t = attack.timestamp.substring(11, 16);
+            grouped[t] = (grouped[t] || 0) + 1;
+        });
+
+        const overlay = document.getElementById('timelineOverlay');
+        const times  = Object.keys(grouped).sort().slice(-20);
+        const counts = times.map(t => grouped[t]);
+
+        if (times.length === 0) {
+            attackTimelineChart.data.labels = PLACEHOLDER_LABELS.slice();
+            attackTimelineChart.data.datasets[0].data = PLACEHOLDER_COUNTS.slice();
+            overlay.classList.add('visible');
+        } else {
+            attackTimelineChart.data.labels = times;
+            attackTimelineChart.data.datasets[0].data = counts;
+            overlay.classList.remove('visible');
+        }
+        attackTimelineChart.update();
+    }
+
+    function setupSocketListeners() {
+        socket.on('connect', () => console.log('Connected to NIDS server'));
+
+        socket.on('attack_alert', function (data) {
+            addAttackToFeed(data);
+            // Refresh stats (and doughnut) immediately on each live attack
+            fetchStats();
+        });
+
+        socket.on('sync_block_ip',   () => fetchBlockedIPs());
+        socket.on('sync_unblock_ip', () => fetchBlockedIPs());
+
+        socket.on('global_model_ready', function (data) {
+            document.getElementById('fedRound').textContent = data.round;
+            document.getElementById('globalAccuracy').textContent =
+                (data.accuracy * 100).toFixed(2) + '%';
+        });
+    }
+
+    function fetchInitialData() {
+        fetchStats();
+        fetchClients();
+        fetchRecentAttacks();
+        fetchBlockedIPs();
+    }
+
+    function fetchStats() {
+        fetch('/api/status')
+            .then(r => r.json())
+            .then(data => updateStats(data))
+            .catch(e => console.error('fetchStats:', e));
+    }
+
+    function updateStats(data) {
+        document.getElementById('clientsCount').textContent  = data.clients_connected || 0;
+        document.getElementById('attacksCount').textContent  = data.global_stats.total_attacks_detected || 0;
+        document.getElementById('blockedCount').textContent  = data.global_stats.total_ips_blocked || 0;
+        document.getElementById('packetsCount').textContent  = formatNumber(data.global_stats.total_packets_processed || 0);
+        document.getElementById('fedRound').textContent      = data.federated_rounds || 0;
+        document.getElementById('globalAccuracy').textContent =
+            ((data.global_stats.global_accuracy || 0.9967) * 100).toFixed(2) + '%';
+
+        if (data.global_stats.attack_types) {
+            const t = data.global_stats.attack_types;
+            updateDonut(t.BruteForce || 0, t['DoS/DDoS'] || 0, t.PortScan || 0);
+        }
+    }
+
+    function fetchClients() {
+        fetch('/api/clients')
+            .then(r => r.json())
+            .then(data => updateClientsGrid(data.clients))
+            .catch(e => console.error('fetchClients:', e));
+    }
+
+    function updateClientsGrid(clients) {
+        const grid = document.getElementById('clientsGrid');
+        if (Object.keys(clients).length === 0) {
+            grid.innerHTML = `<div style="text-align:center;color:#94a3b8;padding:40px;grid-column:1/-1;">No clients connected</div>`;
+            return;
+        }
+        grid.innerHTML = '';
+        for (const [clientId, clientData] of Object.entries(clients)) {
+            const stats = clientData.stats || {};
+            const card = document.createElement('div');
+            card.className = 'client-card';
+            card.innerHTML = `
+                <div class="client-header">
+                    <div class="client-name">${clientId}</div>
+                    <div class="client-status ${clientData.status === 'warning' ? 'warning' : ''}"></div>
+                </div>
+                <div class="client-stats">
+                    <div><span>Attacks:</span><span>${stats.attacks_detected || 0}</span></div>
+                    <div><span>Packets:</span><span>${formatNumber(stats.packets_processed || 0)}</span></div>
+                    <div><span>Blocked:</span><span>${stats.ips_blocked || 0}</span></div>
+                </div>`;
+            grid.appendChild(card);
+        }
+    }
+
+    function fetchRecentAttacks() {
+        fetch('/api/attacks/recent')
+            .then(r => r.json())
+            .then(data => {
+                attacksData = data.attacks || [];
+                updateAttacksFeed();
+                updateTimelineChart();
+            })
+            .catch(e => console.error('fetchRecentAttacks:', e));
+    }
+
+    function addAttackToFeed(attack) {
+        attacksData.unshift(attack);
+        if (attacksData.length > 50) attacksData = attacksData.slice(0, 50);
+        updateAttacksFeed();
+        updateTimelineChart();
+    }
+
+    function updateAttacksFeed() {
+        const feed = document.getElementById('attacksFeed');
+        if (attacksData.length === 0) {
+            feed.innerHTML = `<div style="text-align:center;color:#94a3b8;padding:40px;">Waiting for attack detection...</div>`;
+            return;
+        }
+        feed.innerHTML = '';
+        attacksData.slice(0, 20).forEach(attack => {
+            const item = document.createElement('div');
+            item.className = 'attack-item';
+            const time = new Date(attack.timestamp).toLocaleTimeString();
+            item.innerHTML = `
+                <div class="attack-header">
+                    <div class="attack-type">${attack.attack_type}</div>
+                    <div class="attack-time">${time}</div>
+                </div>
+                <div class="attack-details">
+                    <div>Source: <strong>${attack.ip_address}</strong></div>
+                    <div>Client: ${attack.client_id} | Confidence: ${(attack.confidence * 100).toFixed(1)}%</div>
+                </div>`;
+            feed.appendChild(item);
+        });
+    }
+
+    function fetchBlockedIPs() {
+        fetch('/api/blocked_ips')
+            .then(r => r.json())
+            .then(data => updateBlockedIPs(data.blocked_ips || []))
+            .catch(e => console.error('fetchBlockedIPs:', e));
+    }
+
+    function updateBlockedIPs(ips) {
+        const container = document.getElementById('blockedIps');
+        if (ips.length === 0) {
+            container.innerHTML = `<div style="text-align:center;color:#94a3b8;padding:40px;">No IPs blocked yet</div>`;
+            return;
+        }
+        container.innerHTML = '';
+        ips.forEach(ip => {
+            const item = document.createElement('div');
+            item.className = 'ip-item';
+            item.innerHTML = `<div class="ip-address">${ip}</div><div style="color:#ef4444;font-size:1.2em;">🚫</div>`;
+            container.appendChild(item);
+        });
+    }
+
+    function updateCharts() { fetchStats(); fetchRecentAttacks(); }
+
+    // Poll recent attacks periodically so the timeline stays live
+    setInterval(fetchRecentAttacks, 5000);
+
+    function formatNumber(num) {
+        if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M';
+        if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K';
+        return num.toString();
+    }
+</script>
+</body>
+</html>
