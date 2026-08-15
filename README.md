@@ -131,19 +131,6 @@ Built with **Flask** and **Socket.IO**, the dashboard provides a live operationa
 
 ---
 
-## 📸 Screenshots
-
-| Dashboard Overview | Attack Timeline | Live Attack Feed |
-|---|---|---|
-| ![Dashboard Overview](assets/screenshots/dashboard-overview.png) | ![Attack Timeline](assets/screenshots/attack-timeline.png) | ![Live Attack Feed](assets/screenshots/live-attack-feed.png) |
-
-- **Dashboard Overview** — federated NIDS status, model accuracy, attack counts, blocked IPs, packets processed, and attack distribution.
-- **Attack Timeline** — detected attack activity over time.
-- **Live Attack Feed** — attack type, source IP, federated client, confidence, and timestamp per event, plus a blocked-IP panel.
-- **Connected Federated Clients** — per-client status, attacks detected, packets processed, and blocked IPs.
-
----
-
 ## 🛠️ Tech Stack
 
 **Backend**
