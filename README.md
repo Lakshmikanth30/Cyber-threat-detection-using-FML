@@ -1,49 +1,16 @@
-# 🛡️ Real-Time Cyber Threat Detection Using Federated Machine Learning
+#  Real-Time Cyber Threat Detection Using Federated Machine Learning
 
 A real-time network intrusion detection system that combines **federated learning**, **ensemble machine learning**, and **explainable AI** to detect and respond to cyber attacks across distributed clients — visualized through a live web dashboard.
 
 ---
 
-## 🏗️ System Architecture
+##  System Architecture
 
-
-```
-                 Network Traffic
-                        │
-                        ▼
-              ┌─────────────────────┐
-              │  Federated Clients   │
-              │ (Local Detection &   │
-              │  Model Training)     │
-              └──────────┬───────────┘
-                         │
-                  Model Updates
-                         │
-                         ▼
-              ┌─────────────────────┐
-              │ Federated Learning  │
-              │       Server        │
-              └──────────┬──────────┘
-                         │
-                   Global Model
-                         │
-              ┌──────────┴──────────┐
-              ▼                     ▼
-     ┌─────────────────┐   ┌────────────────────┐
-     │ Threat Detection │   │  Real-Time         │
-     │ & Classification │   │  Monitoring        │
-     └────────┬─────────┘   └─────────┬──────────┘
-              │                       │
-              ▼                       ▼
-     ┌─────────────────┐   ┌────────────────────┐
-     │ IP Blocking &   │   │  Web Dashboard      │
-     │ Alert Generation│   │  & Visualization    │
-     └─────────────────┘   └────────────────────┘
-```
+<img width="1196" height="1315" alt="ChatGPT Image Aug 19, 2026, 01_29_47 PM" src="https://github.com/user-attachments/assets/7307ea21-32ef-4724-94f9-4caeb1dcdb69" />
 
 ---
 
-## 🔄 How the System Works
+##  How the System Works
 
 1. Network traffic is captured and processed.
 2. Traffic is converted into usable flow-based features.
@@ -58,7 +25,7 @@ A real-time network intrusion detection system that combines **federated learnin
 
 ---
 
-## 🧠 Machine Learning Approach
+##  Machine Learning Approach
 
 The detection pipeline uses **ensemble classification**, combining:
 
@@ -85,7 +52,7 @@ Confidence:  77.0%
 
 ---
 
-## 🔐 Federated Learning
+##  Federated Learning
 
 Federated learning lets multiple distributed clients collaborate on model training **without** centralizing raw traffic data.
 
@@ -101,7 +68,7 @@ Each client processes local traffic and contributes to the model-update workflow
 
 ---
 
-## 🔎 Explainable AI
+##  Explainable AI
 
 The system integrates **SHAP (SHapley Additive exPlanations)** for model interpretability, going beyond a binary "attack detected" flag.
 
@@ -113,7 +80,7 @@ The system integrates **SHAP (SHapley Additive exPlanations)** for model interpr
 
 ---
 
-## 🖥️ Real-Time Dashboard
+##  Real-Time Dashboard
 
 Built with **Flask** and **Socket.IO**, the dashboard provides a live operational view of the system.
 
@@ -131,7 +98,19 @@ Built with **Flask** and **Socket.IO**, the dashboard provides a live operationa
 
 ---
 
-## 🛠️ Tech Stack
+##  Screenshots
+
+| Dashboard Overview | Attack Timeline | Live Attack Feed |
+|---|---|---|
+| <img width="1636" height="903" alt="Screenshot 2026-08-15 085833" src="https://github.com/user-attachments/assets/c55fecff-ab7f-4760-a16f-aa5059b75a0a" /> | <img width="1709" height="471" alt="Screenshot 2026-08-15 085848" src="https://github.com/user-attachments/assets/eaaafb00-6cbc-43b2-b542-523f963d8fa1" /> | <img width="1617" height="822" alt="Screenshot 2026-08-15 085943" src="https://github.com/user-attachments/assets/2e799e82-a5d8-464b-9468-4bfa3aaef28a" /> |
+
+- **Dashboard Overview** — federated NIDS status, model accuracy, attack counts, blocked IPs, packets processed, and attack distribution.
+- **Attack Timeline** — detected attack activity over time.
+- **Live Attack Feed** — attack type, source IP, federated client, confidence, and timestamp per event, plus a blocked-IP panel and connected federated client stats (per-client attacks detected, packets processed, and blocked IPs).
+
+---
+
+##  Tech Stack
 
 **Backend**
 - Python
@@ -159,7 +138,7 @@ Built with **Flask** and **Socket.IO**, the dashboard provides a live operationa
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 CYBERPROJ/
@@ -186,7 +165,7 @@ CYBERPROJ/
 
 ---
 
-## ⚙️ Installation
+##  Installation
 
 **1. Clone the repository**
 ```bash
@@ -218,7 +197,7 @@ pip install -r requirements.txt
 
 ---
 
-## ▶️ How to Run
+##  How to Run
 
 **Start the federated server**
 ```bash
@@ -230,13 +209,7 @@ python federated/server.py
 python federated/simulation_client.py
 ```
 
-**Open the dashboard**
-
-Visit [http://127.0.0.1:5001/](http://127.0.0.1:5001/) in your browser.
-
----
-
-## 📊 Results
+##  Results
 
 The live dashboard exposes real-time operational metrics, including federated client status, detected attack counts, blocked IPs, packets processed, attack-type distribution, attack timeline, source information, detection confidence, client-level statistics, and global model accuracy.
 
@@ -255,7 +228,7 @@ The live dashboard exposes real-time operational metrics, including federated cl
 
 ---
 
-## 🧪 Testing
+##  Testing
 
 Testing utilities are located in `testing/` and cover:
 
@@ -267,7 +240,7 @@ Testing utilities are located in `testing/` and cover:
 
 ---
 
-## 📚 Project Documentation
+##  Project Documentation
 
 - [`OPTIMIZATION_GUIDE.md`](OPTIMIZATION_GUIDE.md)
 - [`PERFORMANCE_ANALYSIS.md`](PERFORMANCE_ANALYSIS.md)
@@ -275,7 +248,7 @@ Testing utilities are located in `testing/` and cover:
 
 ---
 
-## 🔮 Future Scope
+##  Future Scope
 
 - Deployment across multiple real network nodes
 - Real-time packet capture from production networks
