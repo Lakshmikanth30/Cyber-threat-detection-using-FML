@@ -264,13 +264,13 @@ Testing utilities are located in `testing/` and cover:
 
 ---
 
-## 📖 References
+##  References
 
 Research referenced in the project report spans network intrusion detection, flow-based intrusion detection, federated learning, deep learning for cybersecurity, explainable AI, autoencoder-based anomaly detection, and distributed cybersecurity systems more broadly — including work on temporal NetFlow analysis and botnet detection.
 
 ---
 
-## ⚠️ Disclaimer
+##  Disclaimer
 
 This project is intended for **academic, research, and controlled testing environments only**.
 
@@ -278,6 +278,6 @@ Only perform network monitoring, traffic generation, attack simulation, or IP bl
 
 ---
 
-## 📄 License
+##  License
 
 This project is currently intended for academic and educational purposes. Add a formal open-source license if you decide to distribute it publicly.
